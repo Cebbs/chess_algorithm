@@ -1,5 +1,6 @@
 import bisect
 
+
 class Game(object):
     # Initialize as a new game
     def __init__(self):
@@ -69,7 +70,7 @@ class Game(object):
     def get_possible_moves_horizontal_and_vertical(self, space):
 
         split_state = self.state.split(" ")[0].split("/")  # Split the board into rows
-        occupied_spaces_in_row = []  # Keep track of the pieces in the row by their index
+        occupied_spaces_in_row = {}  # Keep track of the pieces by their column number
         counter = 1  # Initialize counter
 
         # TODO - Clean up / divide into functions
@@ -77,45 +78,57 @@ class Game(object):
             for piece in split_state[int(space[1:]) - 1]:  # For each of the pieces in this piece's row...
                 if piece.isdigit():  # If the piece is a number (blank space(s))...
                     counter += int(piece)  # Increase the counter by the number of blank space
-                elif (piece.isupper() and self.get_piece_at(space).isupper()) or \
-                        (piece.islower() and self.get_piece_at(space).islower()):
-                    # If the pieces are the same color
-                    print "elif piece: " + piece + " -- " + self.get_piece_at(space)
-                    occupied_spaces_in_row.append(chr(counter + 96))
-                    counter += 1
                 else:
-                    # If the pieces are not the same color
-                    # Go one space further and append that space (need to check if left or right)
+                    occupied_spaces_in_row[(chr(counter + 96))] = piece
                     counter += 1
         else:
-            print "Row was empty, skipped"
+            print "Row was empty, skipped"  # TODO does this ever even happen?
 
-        print "Occupied spaces in row: "
-        print occupied_spaces_in_row
-        piece_index = bisect.bisect(occupied_spaces_in_row, space[:1])
-        # print piece_index
-        first_piece_to_right = occupied_spaces_in_row[piece_index] if len(
-            occupied_spaces_in_row) > piece_index else 'i'  # TODO Check logic i dont wanna im tired    # bug bug bug
-        first_piece_to_left = occupied_spaces_in_row[piece_index - 1] if piece_index >= 1 else space[:1]
+        # print "Occupied spaces in row: "  # debug
+        # print occupied_spaces_in_row  # debug
+        occupied_columns = occupied_spaces_in_row.keys()
+        piece_index = occupied_columns.index(space[:1])
+        # print "piece index: " + str(piece_index)  # debug
 
-        print "first piece to right:" + first_piece_to_right
-        print "first piece to left:" + first_piece_to_left
+        occupied_columns.sort()  # Since the dictionary is ordered arbitrarily
+
+        # print "Occupied columns:"  # debug
+        # print occupied_columns  # debug
+
+        if piece_index == 0:
+            first_piece_to_left = occupied_columns[piece_index]
+            first_piece_to_right = occupied_columns[piece_index + 1]
+        elif piece_index == (len(occupied_columns) - 1):
+            first_piece_to_right = occupied_columns[piece_index]
+            first_piece_to_left = occupied_columns[piece_index - 1]
+        else:
+            first_piece_to_right = occupied_columns[piece_index + 1]
+            first_piece_to_left = occupied_columns[piece_index - 1]
+
+        # print "first piece to right:" + first_piece_to_right  # debug
+        # print "first piece to left:" + first_piece_to_left  # debug
 
         possible_moves = []
         for letter in "abcdefgh":
             if first_piece_to_left < letter < first_piece_to_right:
                 possible_moves.append(letter)
 
-        # Make sure we can't move to the same space
-        if space[:1] in possible_moves:  # TODO - kinda hacky
-            possible_moves.remove(space[:1])
+        if not self.same_color(occupied_spaces_in_row[first_piece_to_left], occupied_spaces_in_row[space[:1]]):
+            possible_moves.append(first_piece_to_left)
 
+        if not self.same_color(occupied_spaces_in_row[first_piece_to_right], occupied_spaces_in_row[space[:1]]):
+            possible_moves.append(first_piece_to_right)
+
+        possible_moves.sort()
         possible_moves = map((lambda x: x + space[1:]), possible_moves)
 
         return possible_moves
 
+    def same_color(self, piece_1, piece_2):
+        return (piece_1.isupper() and piece_2.isupper()) or (piece_1.islower() and piece_2.islower())
+
     def get_possible_moves_diagonal(self, space):
-        pass
+        return []
 
     def get_piece_at(self, space):
         if self.is_valid_space(space):
