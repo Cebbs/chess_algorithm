@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 class Game(object):
     # Initialize as a new game
-    def __init__(self, state="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"): #put in constants
+    def __init__(self, state="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"):  # put in constants
         self.state = state
 
     def new_state(self, state):
@@ -21,9 +21,11 @@ class Game(object):
         logger.info("Getting all possible moves for the current game board...")
         movable_pieces = self.get_all_movable_pieces()
         all_possible_moves = {}
-        for space in movable_pieces: # Don't even use the piece TODO - Get rid of it?
+        for space in movable_pieces:  # Don't even use the piece TODO - Get rid of it?
             all_possible_moves[space] = self.get_possible_moves(space)
 
+        # Remove dictionary entries without any values
+        all_possible_moves = dict((k, v) for k, v in all_possible_moves.iteritems() if v)
         logger.info("All possible moves: %s", ', '.join(map(str, all_possible_moves.items())))
         return all_possible_moves
 
@@ -65,7 +67,7 @@ class Game(object):
             if not isinstance(piece, int):
                 possible_moves = self.__get_possible_moves_for_piece(piece, space)
                 logger.debug("Possible moves for %s at space [%s]: [%s]", piece, space,
-                            ', '.join(map(str, possible_moves)))
+                             ', '.join(map(str, possible_moves)))
                 return possible_moves
             else:
                 logger.error("Could not get possible moves for the piece at [%s]: there is no piece at this space.",
@@ -77,9 +79,33 @@ class Game(object):
     def is_valid_space(self, space):
         return len(space) == 2 and 'a' <= space[:1] <= 'h' and 1 <= int(space[1:]) <= 8
 
-    # Check if the moves are valid
+    # Check if the moves are valid, and removes whichever moves are not valid
     def check_validity_of_moves(self, moves):
-        return moves  # TODO -- Need for knight, pawn, and king -- is already handled by rook, queen, and bishop
+        result = []
+
+        # TODO -- Need for knight, pawn, and king -- is already handled by rook, queen, and bishop
+
+        for move in moves:
+            if not self.is_valid_space(move):
+                logger.info("[%s] is not a valid move. Removing it from the list of possible moves.", move)
+            elif self.is_occupied_by_teammate(move):
+                logger.info("[%s] is occupied by a teammate piece. Removing it from the list of possible moves.", move)
+            else:
+                result.append(move)
+
+        return result
+
+    # Check if the given space is occupied by a piece on the same team
+    def is_occupied_by_teammate(self, space):
+        piece = self.get_piece_at(space)
+        if piece == -1:
+            return False
+        else:
+            current_color = 'W' if self.state.split(' ')[1] == 'w' else 'b'
+            # print "space debug" + str(space)
+            # print "piece debug:" + str(piece)
+            # print "color debug:" + current_color
+            return self.same_color_pieces(piece, current_color)
 
     # Get all of the possible moves for the given piece at the given space
     def __get_possible_moves_for_piece(self, piece, space):
@@ -286,6 +312,8 @@ class Game(object):
 
     # Check to see if the given pieces are the same color (same case)
     def same_color_pieces(self, piece_1, piece_2):
+        # print piece_1
+        # print piece_2
         return (piece_1.isupper() and piece_2.isupper()) or (piece_1.islower() and piece_2.islower())
 
     # Get all possible diagonal moves from the given space
@@ -303,7 +331,7 @@ class Game(object):
             return piece
         else:
             logger.error("Invalid space: %s", space)
-            return None
+            return -1
 
     # Get the piece at the given index in the given row
     def __get_piece_at_index_in_row(self, row, index):
@@ -315,17 +343,15 @@ class Game(object):
                 counter += int(piece)
             else:
                 counter += 1
-        # print "Error: piece not found at index [" + str(index) + "] of row " + row
-        logger.error("piece not found at index [%s] of row %s", index, row)
+        logger.debug("piece not found at index [%s] of row [%s]", index, row)
         return -1  # Handled
 
     # String representation override
     def __str__(self):
         return str(self.state)
 
-    # def __repr__(self):
-    #     return self.__str__()
-
+        # def __repr__(self):
+        #     return self.__str__()
 
 # Won't get run if we import this as a reusable module
 if __name__ == '__main__':

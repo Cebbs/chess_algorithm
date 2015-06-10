@@ -22,7 +22,6 @@ class Algorithm(object):
         print str(num)
 
 
-
 class StateTree(object):
     # Initialize the algorithm
     def __init__(self, game_state, parent, depth = 0):
