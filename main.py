@@ -8,11 +8,24 @@ logger = logging.getLogger(__name__)
 
 class Game(object):
     # Initialize as a new game
-    def __init__(self):
-        self.state = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+    def __init__(self, state="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"): #put in constants
+        self.state = state
+
+    def new_state(self, state):
+        self.state = state
+
+    def get_current_state(self):
+        return self.state
 
     def get_all_possible_moves(self):
-        movable_pieces = self.get_all_moveable_pieces()
+        logger.info("Getting all possible moves for the current game board...")
+        movable_pieces = self.get_all_movable_pieces()
+        all_possible_moves = {}
+        for space in movable_pieces: # Don't even use the piece TODO - Get rid of it?
+            all_possible_moves[space] = self.get_possible_moves(space)
+
+        logger.info("All possible moves: %s", ', '.join(map(str, all_possible_moves.items())))
+        return all_possible_moves
 
     def get_all_movable_pieces(self):
         color = self.state.split(' ')[1]
@@ -28,7 +41,7 @@ class Game(object):
                         all_movable_pieces[col_counter + str(row_counter)] = piece
                     col_counter = chr(ord(col_counter) + 1)
                 row_counter -= 1
-        else:
+        elif color == 'b':
             row_counter = 8
             for row in board_by_row:
                 col_counter = 'a'
@@ -37,12 +50,10 @@ class Game(object):
                         all_movable_pieces[col_counter + str(row_counter)] = piece
                     col_counter = chr(ord(col_counter) + 1)
                 row_counter -= 1
+        else:
+            logger.error("Neither black nor white's turn")
 
-        print "All movable pieces:"
-        print all_movable_pieces
-        print
-        print all_movable_pieces.keys()
-        print all_movable_pieces.values()
+        logger.debug("All movable pieces: %s", ', '.join(map(str, all_movable_pieces.items())))
 
         return all_movable_pieces
 
@@ -53,7 +64,7 @@ class Game(object):
             piece = self.get_piece_at(space)
             if not isinstance(piece, int):
                 possible_moves = self.__get_possible_moves_for_piece(piece, space)
-                logger.info("Possible moves for %s at space [%s]: [%s]", piece, space,
+                logger.debug("Possible moves for %s at space [%s]: [%s]", piece, space,
                             ', '.join(map(str, possible_moves)))
                 return possible_moves
             else:
@@ -106,26 +117,26 @@ class Game(object):
     # Get all possible moves for a Knight
     def __get_possible_moves_for_knight(self, space):
         logger.debug("Getting possible moves for a Knight at [%s]", space)
-        return [str(ord(space[:1]) + 1) + str(int(space[1:]) + 2),
-                str(ord(space[:1]) - 1) + str(int(space[1:]) + 2),
-                str(ord(space[:1]) + 1) + str(int(space[1:]) - 2),
-                str(ord(space[:1]) - 1) + str(int(space[1:]) - 2),
-                str(ord(space[:1]) + 2) + str(int(space[1:]) + 1),
-                str(ord(space[:1]) - 2) + str(int(space[1:]) + 1),
-                str(ord(space[:1]) + 2) + str(int(space[1:]) - 1),
-                str(ord(space[:1]) - 2) + str(int(space[1:]) - 1)]
+        return [chr(ord(space[:1]) + 1) + str(int(space[1:]) + 2),
+                chr(ord(space[:1]) - 1) + str(int(space[1:]) + 2),
+                chr(ord(space[:1]) + 1) + str(int(space[1:]) - 2),
+                chr(ord(space[:1]) - 1) + str(int(space[1:]) - 2),
+                chr(ord(space[:1]) + 2) + str(int(space[1:]) + 1),
+                chr(ord(space[:1]) - 2) + str(int(space[1:]) + 1),
+                chr(ord(space[:1]) + 2) + str(int(space[1:]) - 1),
+                chr(ord(space[:1]) - 2) + str(int(space[1:]) - 1)]
 
     # Get all possible moves for a King
     def __get_possible_moves_for_king(self, space):
         logger.debug("Getting possible moves for a King at [%s]", space)
-        return [str(ord(space[:1]) + 1) + str(int(space[1:]) + 1),
-                str(ord(space[:1]) + 1) + str(int(space[1:])),
-                str(ord(space[:1]) + 1) + str(int(space[1:]) - 1),
-                str(ord(space[:1]) - 1) + str(int(space[1:]) + 1),
-                str(ord(space[:1]) - 1) + str(int(space[1:])),
-                str(ord(space[:1]) - 1) + str(int(space[1:]) - 1),
-                str(ord(space[:1])) + str(int(space[1:]) + 1),
-                str(ord(space[:1])) + str(int(space[1:]) - 1)]
+        return [chr(ord(space[:1]) + 1) + str(int(space[1:]) + 1),
+                chr(ord(space[:1]) + 1) + str(int(space[1:])),
+                chr(ord(space[:1]) + 1) + str(int(space[1:]) - 1),
+                chr(ord(space[:1]) - 1) + str(int(space[1:]) + 1),
+                chr(ord(space[:1]) - 1) + str(int(space[1:])),
+                chr(ord(space[:1]) - 1) + str(int(space[1:]) - 1),
+                chr(ord(space[:1])) + str(int(space[1:]) + 1),
+                chr(ord(space[:1])) + str(int(space[1:]) - 1)]
 
     # Get all of the possible move for a rook at the given space
     def __get_possible_moves_for_rook(self, space):
@@ -308,43 +319,54 @@ class Game(object):
         logger.error("piece not found at index [%s] of row %s", index, row)
         return -1  # Handled
 
-# TODO - Turn these all into legit tests
+    # String representation override
+    def __str__(self):
+        return str(self.state)
 
-g = Game()
-# g.get_possible_moves("a2")  # White Pawn 1
-# g.get_possible_moves("b2")  # White Pawn 2
-# print
-# g.get_possible_moves("a7")  # Black Pawn 1
-# g.get_possible_moves("b7")  # Black Pawn 2
-# print
-# g.get_possible_moves("e5")  # Nothing - Middle of board
-# print
-# g.get_possible_moves("e1")  # White King
-# print
-# g.get_possible_moves("e8")  # Black King
-# print
-# g.get_possible_moves("a1")  # White Rook 1
-# logger.info("-----------------------")
-# g.get_possible_moves("h1")  # White Rook 2
-
-# g.get_possible_moves('a1')
-
-g.get_all_movable_pieces()
-
-# g.get_piece_at('a1')
-# g.get_piece_at('a2')
-# g.get_piece_at('b2')
-# g.get_piece_at('c2')
-# g.get_piece_at('d2')
-# g.get_piece_at('e2')
-# g.get_piece_at('f2')
-# g.get_piece_at('g2')
-# g.get_piece_at('h2')
-# g.get_piece_at('h1')
+    # def __repr__(self):
+    #     return self.__str__()
 
 
-# g.get_possible_moves("a1")  # White Rook
-# g.get_possible_moves("h1")  # White Rook
-# print
-# g.get_possible_moves("a8")  # Black Rook
-# g.get_possible_moves("h8")  # Black Rook
+# Won't get run if we import this as a reusable module
+if __name__ == '__main__':
+    # TODO - Turn these all into legit tests and put them in their own file
+
+    g = Game()
+    # g.get_possible_moves("a2")  # White Pawn 1
+    # g.get_possible_moves("b2")  # White Pawn 2
+    # print
+    # g.get_possible_moves("a7")  # Black Pawn 1
+    # g.get_possible_moves("b7")  # Black Pawn 2
+    # print
+    # g.get_possible_moves("e5")  # Nothing - Middle of board
+    # print
+    # g.get_possible_moves("e1")  # White King
+    # print
+    # g.get_possible_moves("e8")  # Black King
+    # print
+    # g.get_possible_moves("a1")  # White Rook 1
+    # logger.info("-----------------------")
+    # g.get_possible_moves("h1")  # White Rook 2
+
+    # g.get_possible_moves('a1')
+
+    g.get_all_possible_moves()
+
+    # g.get_all_movable_pieces()
+
+    # g.get_piece_at('a1')
+    # g.get_piece_at('a2')
+    # g.get_piece_at('b2')
+    # g.get_piece_at('c2')
+    # g.get_piece_at('d2')
+    # g.get_piece_at('e2')
+    # g.get_piece_at('f2')
+    # g.get_piece_at('g2')
+    # g.get_piece_at('h2')
+    # g.get_piece_at('h1')
+
+    # g.get_possible_moves("a1")  # White Rook
+    # g.get_possible_moves("h1")  # White Rook
+    # print
+    # g.get_possible_moves("a8")  # Black Rook
+    # g.get_possible_moves("h8")  # Black Rook
