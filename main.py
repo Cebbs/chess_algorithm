@@ -11,14 +11,24 @@ class Game(object):
     def __init__(self, state="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"):  # put in constants
         self.state = state
 
-    def new_state(self, state):
-        self.state = state
-
+    # Gets the current state of this game board
     def get_current_state(self):
         return self.state
 
+    # TODO Cleanup
+    def change_player(self):
+        state = self.state
+        state = state.split(' ')
+        if self.state.split(' ')[1] == 'w':
+            state[1] = 'b'
+        else:
+            state[1] = 'w'
+        state = ' '.join(state)
+        self.state = state
+
     def get_all_possible_moves(self):
-        logger.info("Getting all possible moves for the current game board...")
+        player = 'WHITE' if self.state.split(' ')[1] == 'w' else 'BLACK'
+        logger.info("Getting all possible moves for the current game board for %s player...", player)
         movable_pieces = self.get_all_movable_pieces()
         all_possible_moves = {}
         for space in movable_pieces:  # Don't even use the piece TODO - Get rid of it?
@@ -26,7 +36,14 @@ class Game(object):
 
         # Remove dictionary entries without any values
         all_possible_moves = dict((k, v) for k, v in all_possible_moves.iteritems() if v)
-        logger.info("All possible moves: %s", ', '.join(map(str, all_possible_moves.items())))
+
+        counter = 0 # TODO - Clean up
+        for set_of_moves in all_possible_moves.values():
+            for move in set_of_moves:
+                counter += 1
+
+        logger.info("Finished getting all possible moves for %s. There are %s possible moves in total.", player, counter)
+        logger.debug("All possible moves: %s", ', '.join(map(str, all_possible_moves.items())))
         return all_possible_moves
 
     def get_all_movable_pieces(self):
@@ -37,20 +54,24 @@ class Game(object):
         if color == 'w':
             row_counter = 8
             for row in board_by_row:
-                col_counter = 'a'
+                col_counter = 1
                 for piece in row:
+                    if piece.isdigit():
+                        col_counter += int(piece)
                     if piece.isupper():
-                        all_movable_pieces[col_counter + str(row_counter)] = piece
-                    col_counter = chr(ord(col_counter) + 1)
+                        all_movable_pieces[str(chr(col_counter + 96)) + str(row_counter)] = piece
+                        col_counter += 1
                 row_counter -= 1
         elif color == 'b':
             row_counter = 8
             for row in board_by_row:
-                col_counter = 'a'
+                col_counter = 1
                 for piece in row:
+                    if piece.isdigit():
+                        col_counter += int(piece)
                     if piece.islower():
-                        all_movable_pieces[col_counter + str(row_counter)] = piece
-                    col_counter = chr(ord(col_counter) + 1)
+                        all_movable_pieces[str(chr(col_counter + 96)) + str(row_counter)] = piece
+                        col_counter += 1
                 row_counter -= 1
         else:
             logger.error("Neither black nor white's turn")
@@ -70,26 +91,25 @@ class Game(object):
                              ', '.join(map(str, possible_moves)))
                 return possible_moves
             else:
-                logger.error("Could not get possible moves for the piece at [%s]: there is no piece at this space.",
-                             space)
+                logger.error("Could not get possible moves for the piece at [%s]: there is no piece at this space." +
+                             " The returned piece was [%s] - Here is the current state: %s", space, piece, self.state)
         else:
-            logger.error("Could not get possible moves for the piece at [%s]: this is not a valid space", space)
+            logger.error("Could not get possible moves for the piece at [%s]: this is not a valid space. Here is" +
+                         " the current state: %s", space, self.state)
 
     # Check if the given space is valid
     def is_valid_space(self, space):
         return len(space) == 2 and 'a' <= space[:1] <= 'h' and 1 <= int(space[1:]) <= 8
 
     # Check if the moves are valid, and removes whichever moves are not valid
-    def check_validity_of_moves(self, moves):
+    def check_validity_of_possible_moves(self, moves):
+
         result = []
-
-        # TODO -- Need for knight, pawn, and king -- is already handled by rook, queen, and bishop
-
         for move in moves:
             if not self.is_valid_space(move):
-                logger.info("[%s] is not a valid move. Removing it from the list of possible moves.", move)
+                logger.debug("[%s] is not a valid move. Removing it from the list of possible moves.", move)
             elif self.is_occupied_by_teammate(move):
-                logger.info("[%s] is occupied by a teammate piece. Removing it from the list of possible moves.", move)
+                logger.debug("[%s] is occupied by a teammate piece. Removing it from the list of possible moves.", move)
             else:
                 result.append(move)
 
@@ -113,56 +133,61 @@ class Game(object):
         direction = 1 if piece.isupper() else -1
         p = piece.lower()
 
-        # Check if the piece is a pawn and is on a starting space, and therefore can move two spaces
-        if (piece == 'p' and int(space[1:]) == 7) or (piece == 'P' and int(space[1:]) == 2):
-            p += "_start"
-
-        # Removed the dictionary lookup return block here because it built all possibilities on every lookup
-
         possible_moves = []
-        if p == 'p':
-            possible_moves = [space[:1] + str(int(space[1:]) + (1 * direction))]
-        elif p == 'p_start':
-            possible_moves = [space[:1] + str(int(space[1:]) + (1 * direction)),
-                              space[:1] + str(int(space[1:]) + (2 * direction))]
-        elif p == 'r':
+        if p == 'p':  # If the given piece is a Pawn...
+            possible_moves = self.__get_possible_moves_for_pawn(space, direction)
+        elif p == 'r':  # If the given piece is a Rook...
             possible_moves = self.__get_possible_moves_for_rook(space)
-        elif p == 'n':
+        elif p == 'n':  # If the given piece is a Knight...
             possible_moves = self.__get_possible_moves_for_knight(space)
-        elif p == 'b':
+        elif p == 'b':  # If the given piece is a Bishop...
             possible_moves = self.__get_possible_moves_for_bishop(space)
-        elif p == 'q':
+        elif p == 'q':  # If the given piece is a Queen...
             possible_moves = self.__get_possible_moves_for_queen(space)
-        elif p == 'k':
+        elif p == 'k':  # If the given piece is a King...
             possible_moves = self.__get_possible_moves_for_king(space)
 
-        possible_moves = self.check_validity_of_moves(possible_moves)
-
         return possible_moves
+
+    def __get_possible_moves_for_pawn(self, space, direction):
+
+        result = [space[:1] + str(int(space[1:]) + (1 * direction))]
+
+        if (direction == -1 and int(space[1:]) == 7) or (direction == 1 and int(space[1:]) == 2):
+            result.append(space[:1] + str(int(space[1:]) + (2 * direction)))
+
+        # TODO Handle fancy pawn move
+
+        result = self.check_validity_of_possible_moves(result)
+        return result
 
     # Get all possible moves for a Knight
     def __get_possible_moves_for_knight(self, space):
         logger.debug("Getting possible moves for a Knight at [%s]", space)
-        return [chr(ord(space[:1]) + 1) + str(int(space[1:]) + 2),
-                chr(ord(space[:1]) - 1) + str(int(space[1:]) + 2),
-                chr(ord(space[:1]) + 1) + str(int(space[1:]) - 2),
-                chr(ord(space[:1]) - 1) + str(int(space[1:]) - 2),
-                chr(ord(space[:1]) + 2) + str(int(space[1:]) + 1),
-                chr(ord(space[:1]) - 2) + str(int(space[1:]) + 1),
-                chr(ord(space[:1]) + 2) + str(int(space[1:]) - 1),
-                chr(ord(space[:1]) - 2) + str(int(space[1:]) - 1)]
+        result = [chr(ord(space[:1]) + 1) + str(int(space[1:]) + 2),
+                  chr(ord(space[:1]) - 1) + str(int(space[1:]) + 2),
+                  chr(ord(space[:1]) + 1) + str(int(space[1:]) - 2),
+                  chr(ord(space[:1]) - 1) + str(int(space[1:]) - 2),
+                  chr(ord(space[:1]) + 2) + str(int(space[1:]) + 1),
+                  chr(ord(space[:1]) - 2) + str(int(space[1:]) + 1),
+                  chr(ord(space[:1]) + 2) + str(int(space[1:]) - 1),
+                  chr(ord(space[:1]) - 2) + str(int(space[1:]) - 1)]
+        result = self.check_validity_of_possible_moves(result)
+        return result
 
     # Get all possible moves for a King
     def __get_possible_moves_for_king(self, space):
         logger.debug("Getting possible moves for a King at [%s]", space)
-        return [chr(ord(space[:1]) + 1) + str(int(space[1:]) + 1),
-                chr(ord(space[:1]) + 1) + str(int(space[1:])),
-                chr(ord(space[:1]) + 1) + str(int(space[1:]) - 1),
-                chr(ord(space[:1]) - 1) + str(int(space[1:]) + 1),
-                chr(ord(space[:1]) - 1) + str(int(space[1:])),
-                chr(ord(space[:1]) - 1) + str(int(space[1:]) - 1),
-                chr(ord(space[:1])) + str(int(space[1:]) + 1),
-                chr(ord(space[:1])) + str(int(space[1:]) - 1)]
+        result = [chr(ord(space[:1]) + 1) + str(int(space[1:]) + 1),
+                  chr(ord(space[:1]) + 1) + str(int(space[1:])),
+                  chr(ord(space[:1]) + 1) + str(int(space[1:]) - 1),
+                  chr(ord(space[:1]) - 1) + str(int(space[1:]) + 1),
+                  chr(ord(space[:1]) - 1) + str(int(space[1:])),
+                  chr(ord(space[:1]) - 1) + str(int(space[1:]) - 1),
+                  chr(ord(space[:1])) + str(int(space[1:]) + 1),
+                  chr(ord(space[:1])) + str(int(space[1:]) - 1)]
+        result = self.check_validity_of_possible_moves(result)
+        return result
 
     # Get all of the possible move for a rook at the given space
     def __get_possible_moves_for_rook(self, space):
@@ -193,7 +218,7 @@ class Game(object):
         counter = 1  # Initialize counter
 
         # TODO - Clean up
-        if len(split_state) > int(space[1:]):  # If the row is not empty       # TODO, will never be true (?)
+        if len(split_state[8 - int(space[1:])]) >= int(space[1:]):  # If the row is not empty
             for piece in split_state[8 - int(space[1:])]:  # For each of the pieces in this piece's row...
                 if piece.isdigit():  # If the piece is a number (blank space(s))...
                     counter += int(piece)  # Increase the counter by the number of blank space
@@ -201,7 +226,8 @@ class Game(object):
                     occupied_spaces_in_row[(chr(counter + 96))] = piece
                     counter += 1
         else:
-            print "Row was empty, skipped"  # TODO does this ever even happen?
+            logger.error("While trying to get the horizontal moves for the given space [%s], the row of the given " +
+                         "space was not long enough to contain the space", space)
 
         logger.debug("Occupied spaces in row: %s", ','.join(map(str, occupied_spaces_in_row.items())))
 
@@ -321,12 +347,13 @@ class Game(object):
         return []
 
     # Get the piece at the given space
+    # If there is no piece at the given space, returns -1   # TODO - Should this return None instead?
     def get_piece_at(self, space):
         logger.debug("Getting piece at space [%s]", space)
         if self.is_valid_space(space):
             state_split = self.state[:(self.state.find(' '))].split("/")
             state_split = state_split[8 - int(space[1:])]
-            piece = self.__get_piece_at_index_in_row(state_split, ord(space[:1]) - 97)
+            piece = self.__get_piece_at_index_in_row(state_split, ord(space[:1]) - 96)
             logger.debug("Piece at space [%s] is %s", space, piece)
             return piece
         else:
@@ -335,23 +362,20 @@ class Game(object):
 
     # Get the piece at the given index in the given row
     def __get_piece_at_index_in_row(self, row, index):
-        counter = 0
+        counter = 1
         for piece in row:  # For each of the pieces in this piece's row
             if counter == index:
-                return piece
+                return piece  # If it's the piece we're looking for, return it
             elif piece.isdigit():
-                counter += int(piece)
+                counter += int(piece)  # If the current piece is a digit, increment our counter accordingly
             else:
-                counter += 1
+                counter += 1  # If the piece is not a digit or the one we're looking for, increment by 1
         logger.debug("piece not found at index [%s] of row [%s]", index, row)
-        return -1  # Handled
+        return -1
 
     # String representation override
     def __str__(self):
         return str(self.state)
-
-        # def __repr__(self):
-        #     return self.__str__()
 
 # Won't get run if we import this as a reusable module
 if __name__ == '__main__':

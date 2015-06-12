@@ -14,7 +14,6 @@ def test():
     logging.critical("Starting %s calls of Game.get_all_possible_moves()...", num_test_runs)
     for n in range(1, num_test_runs + 1):
         g.get_all_possible_moves()
-        # logging.critical('TEST :: Completed call %s', n) -- not necessary + slows tests down
 
 if __name__ == '__main__':
     import timeit
