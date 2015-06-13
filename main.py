@@ -31,8 +31,8 @@ class Game(object):
         logger.info("Getting all possible moves for the current game board for %s player...", player)
         movable_pieces = self.get_all_movable_pieces()
         all_possible_moves = {}
-        for space in movable_pieces:  # Don't even use the piece TODO - Get rid of it?
-            all_possible_moves[space] = self.get_possible_moves(space)
+        for space in movable_pieces:
+            all_possible_moves[space] = self.__get_possible_moves_for_piece(movable_pieces[space], space)
 
         # Remove dictionary entries without any values
         all_possible_moves = dict((k, v) for k, v in all_possible_moves.iteritems() if v)
@@ -81,7 +81,7 @@ class Game(object):
         return all_movable_pieces
 
     # Get the possible moves for a piece at the given space
-    def get_possible_moves(self, space):
+    def get_possible_moves_for_space(self, space):
         logger.debug("Getting possible moves for the piece at [%s]...", space)
         if self.is_valid_space(space):
             piece = self.get_piece_at(space)
@@ -146,6 +146,8 @@ class Game(object):
             possible_moves = self.__get_possible_moves_for_queen(space)
         elif p == 'k':  # If the given piece is a King...
             possible_moves = self.__get_possible_moves_for_king(space)
+        else:
+            logger.error("Was given an invalid piece [%s], can not find possible moves for it.", piece)
 
         return possible_moves
 
@@ -192,25 +194,25 @@ class Game(object):
     # Get all of the possible move for a rook at the given space
     def __get_possible_moves_for_rook(self, space):
         logger.debug("Getting possible moves for Rook at [%s]", space)
-        return self.__get_possible_moves_horizontal_and_vertical(space)
+        return self._get_possible_moves_horizontal_and_vertical(space)
 
     # Get all of the possible moves for a queen at the given space
     def __get_possible_moves_for_queen(self, space):
         logger.debug("Getting possible moves for Queen at [%s]", space)
-        return self.__get_possible_moves_horizontal_and_vertical(space) + self.get_possible_moves_diagonal(space)
+        return self._get_possible_moves_horizontal_and_vertical(space) + self._get_possible_moves_diagonal(space)
 
     # Get all of the possible moves for a bishop at the given space
     def __get_possible_moves_for_bishop(self, space):
         logger.debug("Getting possible moves for Bishop at [%s]", space)
-        return self.get_possible_moves_diagonal(space)
+        return self._get_possible_moves_diagonal(space)
 
     # Get the possible horizontal and vertical moves from the given space
-    def __get_possible_moves_horizontal_and_vertical(self, space):
+    def _get_possible_moves_horizontal_and_vertical(self, space):
         logger.debug("Getting horizontal and vertical moves from space [%s]", space)
-        return self.__get_possible_moves_horizontal(space) + self.__get_possible_moves_vertical(space)
+        return self._get_possible_moves_horizontal(space) + self._get_possible_moves_vertical(space)
 
     # Get the possible horizontal moves from the given space
-    def __get_possible_moves_horizontal(self, space):
+    def _get_possible_moves_horizontal(self, space):
         logger.debug("Getting possible moves in row")
 
         split_state = self.state.split(" ")[0].split("/")  # Split the board into rows
@@ -276,7 +278,7 @@ class Game(object):
         return possible_moves
 
     # Get all of the possible vertical moves for the piece at the given space
-    def __get_possible_moves_vertical(self, space):
+    def _get_possible_moves_vertical(self, space):
         logger.debug("Getting possible vertical moves from space [%s]", space)
 
         state_split = self.state.split(' ')[0].split('/')
@@ -343,7 +345,7 @@ class Game(object):
         return (piece_1.isupper() and piece_2.isupper()) or (piece_1.islower() and piece_2.islower())
 
     # Get all possible diagonal moves from the given space
-    def get_possible_moves_diagonal(self, space):
+    def _get_possible_moves_diagonal(self, space):
         return []
 
     # Get the piece at the given space
@@ -353,7 +355,7 @@ class Game(object):
         if self.is_valid_space(space):
             state_split = self.state[:(self.state.find(' '))].split("/")
             state_split = state_split[8 - int(space[1:])]
-            piece = self.__get_piece_at_index_in_row(state_split, ord(space[:1]) - 96)
+            piece = self._get_piece_at_index_in_row(state_split, ord(space[:1]) - 96)
             logger.debug("Piece at space [%s] is %s", space, piece)
             return piece
         else:
@@ -361,7 +363,7 @@ class Game(object):
             return -1
 
     # Get the piece at the given index in the given row
-    def __get_piece_at_index_in_row(self, row, index):
+    def _get_piece_at_index_in_row(self, row, index):
         counter = 1
         for piece in row:  # For each of the pieces in this piece's row
             if counter == index:
