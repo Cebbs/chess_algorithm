@@ -31,11 +31,22 @@ class StateTree(object):
         self.parent = parent
         self.depth = depth
         self.children = []
+        self.game_state_score = 0
+
+    # Is this a max node? (A game state where the player is WHITE and is looking at all possible moves)
+    def _is_max_node(self):
+        return self.game_state.get_current_state().split(' ')[1] == 'w'
+
+    # Is this a min node? (A game state where the player is BLACK and is looking at all possible moves)
+    def _is_min_node(self):
+        return not self._is_max_node()
 
     # Generate one level of a decision tree from every possible move from this state
     def generate_decision_tree(self):
 
         all_possible_moves = self.game_state.get_all_possible_moves()
+        # self._get_game_state_score_for_color(all_possible_moves)
+        self.assign_game_state_score()
         all_possible_game_states = []
         for original_space in all_possible_moves.keys():
             for possible_move in all_possible_moves[original_space]:
@@ -43,14 +54,93 @@ class StateTree(object):
 
         # print [str(item) for item in all_possible_game_states]
         for state in all_possible_game_states:
-            self.children.append(StateTree(state, self, self.depth + 1))
+            new_child = StateTree(state, self, self.depth + 1)
+            # print "New child created - game state score: " + str(new_child.get_game_score())
+            # new_child._get_game_state_score_for_color()
+            new_child.assign_game_state_score()
+            # print "New child assigned score - new game state score: " + str(new_child.get_game_score())
+            # print "new Child game score:" + str(new_child.get_game_score())
+            self.children.append(new_child)
+
+        # Debug
+        # for child in self.children:
+        #     if child.get_game_score() == 0:
+        #         print "GAME SCORE IS 0 THOUGH"
 
         # print "test"
         # print [str(x.game_state) for x in self.children]
 
+        # TODO - Run minmax and remove children we don't want
+
         if self.depth < DEPTH_TO_RECUR_TO:
+            if self._is_min_node():
+                min_child_score = float("inf")
+                for child in self.children:
+                    if child.get_game_score() < min_child_score:
+                        min_child_score = child.get_game_score()
+
+                print "min node score: " + str(min_child_score)
+
+                self.children = [child for child in self.children if child.get_game_score() == min_child_score]
+
+                print "Children nodes:"
+                print [x.get_game_score() for x in self.children]
+
+            print "Regular Max node"
             for child in self.children:
                 child.generate_decision_tree()  # Recur
+
+    def get_game_score(self):
+        return self.game_state_score
+
+    def assign_game_state_score(self):
+        # all_possible_white_moves = self.game_state.get_all_possible_moves()
+        all_possible_black_moves = self.game_state.get_all_possible_moves(color='w')
+        white_score = self._get_game_state_score_for_color(all_possible_black_moves, 'w')
+        black_score = self._get_game_state_score_for_color(all_possible_black_moves, 'b')
+        # self.game_state_score = 0 - white_score
+        # print "White score: " + str(white_score)
+        # print "Black score: " + str(black_score)
+        print "Total score: " + str(self.game_state_score)
+        return 0
+
+    def _get_game_state_score_for_color(self, all_possible_moves, color):
+        enemy_color = 'b' if color == 'w' else 'w'
+        all_enemy_pieces = self.game_state.get_all_movable_pieces(color=enemy_color)
+        # print "All possible moves:"
+        # print all_possible_moves
+        # print "All Enemy Pieces:"
+        # print all_enemy_pieces
+
+        possible_move_values = []
+
+        possible_move_counter = 0
+        for original_space in all_possible_moves:
+            for possible_move in all_possible_moves[original_space]:
+                possible_move_values.append(possible_move)
+                possible_move_counter += 1
+
+        all_takable_pieces = []
+
+        for move in possible_move_values:
+            if move in all_enemy_pieces.keys():
+                all_takable_pieces.append(all_enemy_pieces[move])
+
+        game_state_score = 0
+
+        if len(all_takable_pieces) > 0:
+            print "Takeable pieces:"
+            print all_takable_pieces
+
+            for piece in all_takable_pieces:
+                p = piece.lower()
+                game_state_score += {'p': 1, 'r': 5, 'n': 3, 'b': 3, 'q': 9, 'k': 1000}[p]
+
+                # TODO - Subtract the score of the pieces that can be taken from you
+
+        game_state_score += (possible_move_counter / 10.0)
+        # self.game_state_score = game_state_score
+        return game_state_score
 
     def count_nodes_below(self):
         result = 1
@@ -77,7 +167,8 @@ class StateTree(object):
         moving_piece = self.game_state.get_piece_at(original_space)
         board = self.game_state.get_current_state()[:(self.game_state.get_current_state().find(' '))]
         board_split = board.split('/')
-        logger.debug("Creating possible game state by moving piece [%s] from [%s] to [%s]", moving_piece, original_space, new_move)
+        logger.debug("Creating possible game state by moving piece [%s] from [%s] to [%s]", moving_piece,
+                     original_space, new_move)
 
         row_of_original_piece = list(board_split[8 - int(original_space[1:])])
 
@@ -105,6 +196,8 @@ class StateTree(object):
                 new_row_of_new_space.append(piece)
 
         new_row_of_new_space[ord(new_move[:1]) - 97] = moving_piece
+        # print "Debug :: "
+        # print new_row_of_new_space
         new_row_of_new_space = ''.join(new_row_of_new_space)
 
         board_split[8 - int(original_space[1:])] = new_row_of_original_piece

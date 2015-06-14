@@ -26,28 +26,38 @@ class Game(object):
         state = ' '.join(state)
         self.state = state
 
-    def get_all_possible_moves(self):
-        player = 'WHITE' if self.state.split(' ')[1] == 'w' else 'BLACK'
+    def get_all_possible_moves(self, **kwargs):
+        if 'color' in kwargs:
+            player_color = kwargs.get('color')
+        else:
+            player_color = self.state.split(' ')[1]
+
+        player = 'WHITE' if player_color == 'w' else 'BLACK'
         logger.info("Getting all possible moves for the current game board for %s player...", player)
-        movable_pieces = self.get_all_movable_pieces()
+        movable_pieces = self.get_all_movable_pieces(color=player_color)
         all_possible_moves = {}
         for space in movable_pieces:
+            logger.info("Debug ::: Getting possible moves for piece [%s] at [%s]", movable_pieces[space], space)
             all_possible_moves[space] = self.__get_possible_moves_for_piece(movable_pieces[space], space)
 
         # Remove dictionary entries without any values
         all_possible_moves = dict((k, v) for k, v in all_possible_moves.iteritems() if v)
 
-        counter = 0 # TODO - Clean up
+        counter = 0  # TODO - Clean up
         for set_of_moves in all_possible_moves.values():
-            for move in set_of_moves:
-                counter += 1
+            counter += len(set_of_moves)
 
-        logger.info("Finished getting all possible moves for %s. There are %s possible moves in total.", player, counter)
+        logger.info("Finished getting all possible moves for %s. There are %s possible moves in total.", player,
+                    counter)
         logger.debug("All possible moves: %s", ', '.join(map(str, all_possible_moves.items())))
         return all_possible_moves
 
-    def get_all_movable_pieces(self):
-        color = self.state.split(' ')[1]
+    def get_all_movable_pieces(self, **kwargs):
+        if 'color' in kwargs:
+            color = kwargs.get('color')
+        else:
+            color = self.state.split(' ')[1]
+
         board_by_row = self.state.split(' ')[0].split('/')
         all_movable_pieces = {}
 
@@ -58,8 +68,11 @@ class Game(object):
                 for piece in row:
                     if piece.isdigit():
                         col_counter += int(piece)
-                    if piece.isupper():
-                        all_movable_pieces[str(chr(col_counter + 96)) + str(row_counter)] = piece
+                    elif piece.isupper():
+                        space = str(chr(col_counter + 96)) + str(row_counter)
+                        all_movable_pieces[space] = piece
+                        col_counter += 1
+                    else:
                         col_counter += 1
                 row_counter -= 1
         elif color == 'b':
@@ -69,8 +82,11 @@ class Game(object):
                 for piece in row:
                     if piece.isdigit():
                         col_counter += int(piece)
-                    if piece.islower():
-                        all_movable_pieces[str(chr(col_counter + 96)) + str(row_counter)] = piece
+                    elif piece.islower():
+                        space = str(chr(col_counter + 96)) + str(row_counter)
+                        all_movable_pieces[space] = piece
+                        col_counter += 1
+                    else:
                         col_counter += 1
                 row_counter -= 1
         else:
@@ -83,19 +99,21 @@ class Game(object):
     # Get the possible moves for a piece at the given space
     def get_possible_moves_for_space(self, space):
         logger.debug("Getting possible moves for the piece at [%s]...", space)
+        possible_moves = []
         if self.is_valid_space(space):
             piece = self.get_piece_at(space)
             if not isinstance(piece, int):
                 possible_moves = self.__get_possible_moves_for_piece(piece, space)
                 logger.debug("Possible moves for %s at space [%s]: [%s]", piece, space,
                              ', '.join(map(str, possible_moves)))
-                return possible_moves
             else:
                 logger.error("Could not get possible moves for the piece at [%s]: there is no piece at this space." +
                              " The returned piece was [%s] - Here is the current state: %s", space, piece, self.state)
         else:
             logger.error("Could not get possible moves for the piece at [%s]: this is not a valid space. Here is" +
                          " the current state: %s", space, self.state)
+
+        return possible_moves
 
     # Check if the given space is valid
     def is_valid_space(self, space):
@@ -211,6 +229,9 @@ class Game(object):
         logger.debug("Getting horizontal and vertical moves from space [%s]", space)
         return self._get_possible_moves_horizontal(space) + self._get_possible_moves_vertical(space)
 
+    def log_current_game_state(self):
+        logger.error("Current game state: %s", self.state)
+
     # Get the possible horizontal moves from the given space
     def _get_possible_moves_horizontal(self, space):
         logger.debug("Getting possible moves in row")
@@ -220,16 +241,17 @@ class Game(object):
         counter = 1  # Initialize counter
 
         # TODO - Clean up
-        if len(split_state[8 - int(space[1:])]) >= int(space[1:]):  # If the row is not empty
-            for piece in split_state[8 - int(space[1:])]:  # For each of the pieces in this piece's row...
-                if piece.isdigit():  # If the piece is a number (blank space(s))...
-                    counter += int(piece)  # Increase the counter by the number of blank space
-                else:
-                    occupied_spaces_in_row[(chr(counter + 96))] = piece
-                    counter += 1
-        else:
-            logger.error("While trying to get the horizontal moves for the given space [%s], the row of the given " +
-                         "space was not long enough to contain the space", space)
+        # if len(split_state[8 - int(space[1:])]) >= int(space[1:]):  # If the row is not empty # TODO - Super wrong
+        for piece in split_state[8 - int(space[1:])]:  # For each of the pieces in this piece's row...
+            if piece.isdigit():  # If the piece is a number (blank space(s))...
+                counter += int(piece)  # Increase the counter by the number of blank space
+            else:
+                occupied_spaces_in_row[(chr(counter + 96))] = piece
+                counter += 1
+        # else:
+        #     logger.error("While trying to get the horizontal moves for the given space [%s], the row of the given " +
+        #                  "space was not long enough to contain the space", space)
+        #     self.log_current_game_state()
 
         logger.debug("Occupied spaces in row: %s", ','.join(map(str, occupied_spaces_in_row.items())))
 
@@ -283,6 +305,8 @@ class Game(object):
 
         state_split = self.state.split(' ')[0].split('/')
 
+        logger.info("Debug - Veritical ::: row: %s", '/'.join(map(str,state_split)))
+
         occupied_spaces_in_column = {}
         counter = 8
         for row in state_split:
@@ -293,9 +317,11 @@ class Game(object):
 
         logger.debug("Occupied spaces in column: %s", ','.join(map(str, occupied_spaces_in_column.items())))
 
+        print occupied_spaces_in_column
         occupied_row = occupied_spaces_in_column.keys()
         occupied_row.sort()  # Since the dictionary items are ordered arbitrarily
 
+        print "debug :: " + ','.join(map(str, occupied_row))
         piece_index = occupied_row.index(int(space[1:]))
 
         logger.debug("Piece index: %s", str(piece_index))
@@ -330,11 +356,14 @@ class Game(object):
                                           occupied_spaces_in_column[int(space[1:])]):
                 possible_moves.append(first_piece_above)
 
-        if space[:1] in possible_moves:  # Just insurance, ever really true?
-            possible_moves.remove(space[:1])
+        if space[1:] in possible_moves:  # Just insurance, ever really true?
+            possible_moves.remove(space[1:])
 
         possible_moves = map((lambda x: space[:1] + str(x)), possible_moves)
         possible_moves.sort()
+
+        # print "possible vertical moves from space " + space
+        print possible_moves
 
         return possible_moves
 

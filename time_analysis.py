@@ -61,9 +61,13 @@ def run_time_tests():
 
 
 if __name__ == '__main__':
+    # Tests for main
     run_time_tests()
 
     # TODO - Put tests for decision tree generation
+    ##############
+
     # TODO - Put tests for alpha beta pruning
+    ##############
 
 
