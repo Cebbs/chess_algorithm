@@ -1,24 +1,42 @@
 __author__ = 'Conor'
 
 import logging
+import time
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+def count_calls(fn):
+    def wrapper(*args, **kwargs):
+        wrapper.called += 1
+        start = time.clock()
+        result = fn(*args, **kwargs)
+        end = time.clock()
+        wrapper.total_time += end - start
+        return result
+
+    wrapper.called = 0
+    wrapper.total_time = 0.0
+    wrapper.__name__ = fn.__name__
+    return wrapper
+
+
 class Game(object):
     # Initialize as a new game
+    @count_calls
     def __init__(self, state="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"):  # put in constants
         self.state = state
 
     # Gets the current state of this game board
+    @count_calls
     def get_current_state(self):
         return self.state
 
     # TODO Cleanup
+    @count_calls
     def change_player(self):
-        state = self.state
-        state = state.split(' ')
+        state = self.state.split(' ')
         if self.state.split(' ')[1] == 'w':
             state[1] = 'b'
         else:
@@ -26,37 +44,38 @@ class Game(object):
         state = ' '.join(state)
         self.state = state
 
-    def get_all_possible_moves(self, **kwargs):
-        if 'color' in kwargs:
-            player_color = kwargs.get('color')
-        else:
-            player_color = self.state.split(' ')[1]
+    @count_calls
+    def get_all_possible_moves(self):
+        color = self.state.split(' ')[1]
+        return self.get_all_possible_moves_for_color(color)
 
-        player = 'WHITE' if player_color == 'w' else 'BLACK'
-        logger.info("Getting all possible moves for the current game board for %s player...", player)
-        movable_pieces = self.get_all_movable_pieces(color=player_color)
+    @count_calls
+    def get_all_possible_moves_for_color(self, color):
+
+        # player = 'WHITE' if color == 'w' else 'BLACK'
+        logger.debug("Getting all possible moves for the current game board for %s player...", color)
+
+        movable_pieces = self.get_all_movable_pieces_for_color(color)
         all_possible_moves = {}
         for space in movable_pieces:
-            logger.info("Debug ::: Getting possible moves for piece [%s] at [%s]", movable_pieces[space], space)
+            logger.debug("Getting possible moves for piece [%s] at [%s]", movable_pieces[space], space)
             all_possible_moves[space] = self.__get_possible_moves_for_piece(movable_pieces[space], space)
 
         # Remove dictionary entries without any values
-        all_possible_moves = dict((k, v) for k, v in all_possible_moves.iteritems() if v)
+        # all_possible_moves = dict((k, v) for k, v in all_possible_moves.iteritems() if v)
 
-        counter = 0  # TODO - Clean up
-        for set_of_moves in all_possible_moves.values():
-            counter += len(set_of_moves)
-
-        logger.info("Finished getting all possible moves for %s. There are %s possible moves in total.", player,
-                    counter)
         logger.debug("All possible moves: %s", ', '.join(map(str, all_possible_moves.items())))
         return all_possible_moves
 
-    def get_all_movable_pieces(self, **kwargs):
-        if 'color' in kwargs:
-            color = kwargs.get('color')
-        else:
-            color = self.state.split(' ')[1]
+    # Get all movable pieces for current state
+    @count_calls
+    def get_all_movable_pieces(self):
+        color = self.state.split(' ')[1]
+        return self.get_all_movable_pieces_for_color(color)
+
+    # TODO - Rename to something more intuitive
+    @count_calls
+    def get_all_movable_pieces_for_color(self, color):
 
         board_by_row = self.state.split(' ')[0].split('/')
         all_movable_pieces = {}
@@ -97,8 +116,11 @@ class Game(object):
         return all_movable_pieces
 
     # Get the possible moves for a piece at the given space
+    @count_calls
+    # TODO - This is never called, we can remove once we switch the unit tests
     def get_possible_moves_for_space(self, space):
         logger.debug("Getting possible moves for the piece at [%s]...", space)
+        logger.critical("TESTETSTST")
         possible_moves = []
         if self.is_valid_space(space):
             piece = self.get_piece_at(space)
@@ -116,24 +138,28 @@ class Game(object):
         return possible_moves
 
     # Check if the given space is valid
+    @count_calls
     def is_valid_space(self, space):
         return len(space) == 2 and 'a' <= space[:1] <= 'h' and 1 <= int(space[1:]) <= 8
 
     # Check if the moves are valid, and removes whichever moves are not valid
+    @count_calls
     def check_validity_of_possible_moves(self, moves):
 
         result = []
         for move in moves:
             if not self.is_valid_space(move):
-                logger.debug("[%s] is not a valid move. Removing it from the list of possible moves.", move)
+                logger.debug("[%s] is not a valid space. Removing it from the list of possible moves.", move)
             elif self.is_occupied_by_teammate(move):
-                logger.debug("[%s] is occupied by a teammate piece. Removing it from the list of possible moves.", move)
+                logger.debug("[%s] is occupied by a teammate piece. Removing the space from the list of " +
+                             "possible moves.", move)
             else:
                 result.append(move)
 
         return result
 
     # Check if the given space is occupied by a piece on the same team
+    @count_calls
     def is_occupied_by_teammate(self, space):
         piece = self.get_piece_at(space)
         if piece == -1:
@@ -146,14 +172,13 @@ class Game(object):
             return self.same_color_pieces(piece, current_color)
 
     # Get all of the possible moves for the given piece at the given space
+    @count_calls
     def __get_possible_moves_for_piece(self, piece, space):
 
-        direction = 1 if piece.isupper() else -1
         p = piece.lower()
 
-        possible_moves = []
         if p == 'p':  # If the given piece is a Pawn...
-            possible_moves = self.__get_possible_moves_for_pawn(space, direction)
+            possible_moves = self.__get_possible_moves_for_pawn(space, piece)
         elif p == 'r':  # If the given piece is a Rook...
             possible_moves = self.__get_possible_moves_for_rook(space)
         elif p == 'n':  # If the given piece is a Knight...
@@ -165,11 +190,15 @@ class Game(object):
         elif p == 'k':  # If the given piece is a King...
             possible_moves = self.__get_possible_moves_for_king(space)
         else:
+            possible_moves = []
             logger.error("Was given an invalid piece [%s], can not find possible moves for it.", piece)
 
         return possible_moves
 
-    def __get_possible_moves_for_pawn(self, space, direction):
+    @count_calls
+    def __get_possible_moves_for_pawn(self, space, piece):
+
+        direction = 1 if piece.isupper() else -1
 
         result = [space[:1] + str(int(space[1:]) + (1 * direction))]
 
@@ -182,6 +211,7 @@ class Game(object):
         return result
 
     # Get all possible moves for a Knight
+    @count_calls
     def __get_possible_moves_for_knight(self, space):
         logger.debug("Getting possible moves for a Knight at [%s]", space)
         result = [chr(ord(space[:1]) + 1) + str(int(space[1:]) + 2),
@@ -196,6 +226,7 @@ class Game(object):
         return result
 
     # Get all possible moves for a King
+    @count_calls
     def __get_possible_moves_for_king(self, space):
         logger.debug("Getting possible moves for a King at [%s]", space)
         result = [chr(ord(space[:1]) + 1) + str(int(space[1:]) + 1),
@@ -210,29 +241,35 @@ class Game(object):
         return result
 
     # Get all of the possible move for a rook at the given space
+    @count_calls
     def __get_possible_moves_for_rook(self, space):
         logger.debug("Getting possible moves for Rook at [%s]", space)
         return self._get_possible_moves_horizontal_and_vertical(space)
 
     # Get all of the possible moves for a queen at the given space
+    @count_calls
     def __get_possible_moves_for_queen(self, space):
         logger.debug("Getting possible moves for Queen at [%s]", space)
         return self._get_possible_moves_horizontal_and_vertical(space) + self._get_possible_moves_diagonal(space)
 
     # Get all of the possible moves for a bishop at the given space
+    @count_calls
     def __get_possible_moves_for_bishop(self, space):
         logger.debug("Getting possible moves for Bishop at [%s]", space)
         return self._get_possible_moves_diagonal(space)
 
     # Get the possible horizontal and vertical moves from the given space
+    @count_calls
     def _get_possible_moves_horizontal_and_vertical(self, space):
         logger.debug("Getting horizontal and vertical moves from space [%s]", space)
         return self._get_possible_moves_horizontal(space) + self._get_possible_moves_vertical(space)
 
+    @count_calls
     def log_current_game_state(self):
         logger.error("Current game state: %s", self.state)
 
     # Get the possible horizontal moves from the given space
+    @count_calls
     def _get_possible_moves_horizontal(self, space):
         logger.debug("Getting possible moves in row")
 
@@ -300,28 +337,37 @@ class Game(object):
         return possible_moves
 
     # Get all of the possible vertical moves for the piece at the given space
+    @count_calls
     def _get_possible_moves_vertical(self, space):
         logger.debug("Getting possible vertical moves from space [%s]", space)
 
         state_split = self.state.split(' ')[0].split('/')
 
-        logger.info("Debug - Veritical ::: row: %s", '/'.join(map(str,state_split)))
-
         occupied_spaces_in_column = {}
-        counter = 8
+        row_counter = 8
         for row in state_split:
-            if len(row) > ord(space[:1]) - 97:  # If there enough pieces in the row
-                if not row[ord(space[:1]) - 97].isdigit():
-                    occupied_spaces_in_column[counter] = row[ord(space[:1]) - 97]
-            counter -= 1
+            col_counter = 1
+            for piece in row:
+                if piece.isdigit():
+                    col_counter += int(piece)
+                else:
+                    if chr(col_counter + 96) == space[:1]:
+                        occupied_spaces_in_column[row_counter] = piece
+                    col_counter += 1
+            # if len(row) > ord(space[:1]) - 97:  # If there enough pieces in the row
+            #     if not row[ord(space[:1]) - 97].isdigit():
+            #         occupied_spaces_in_column[row_counter] = row[ord(space[:1]) - 97]
+            row_counter -= 1
 
         logger.debug("Occupied spaces in column: %s", ','.join(map(str, occupied_spaces_in_column.items())))
 
-        print occupied_spaces_in_column
+        # print "Occupied spaces in colums: "
+        # print occupied_spaces_in_column
         occupied_row = occupied_spaces_in_column.keys()
         occupied_row.sort()  # Since the dictionary items are ordered arbitrarily
+        # logger.info("Occupied row: %s", ','.join(map(str, occupied_row)))
 
-        print "debug :: " + ','.join(map(str, occupied_row))
+        # print "debug :: " + ','.join(map(str, occupied_row))
         piece_index = occupied_row.index(int(space[1:]))
 
         logger.debug("Piece index: %s", str(piece_index))
@@ -363,28 +409,32 @@ class Game(object):
         possible_moves.sort()
 
         # print "possible vertical moves from space " + space
-        print possible_moves
+        # print possible_moves
 
         return possible_moves
 
     # Check to see if the given pieces are the same color (same case)
+    @count_calls
     def same_color_pieces(self, piece_1, piece_2):
         # print piece_1
         # print piece_2
         return (piece_1.isupper() and piece_2.isupper()) or (piece_1.islower() and piece_2.islower())
 
     # Get all possible diagonal moves from the given space
+    @count_calls
     def _get_possible_moves_diagonal(self, space):
         return []
 
     # Get the piece at the given space
     # If there is no piece at the given space, returns -1   # TODO - Should this return None instead?
+    @count_calls
     def get_piece_at(self, space):
         logger.debug("Getting piece at space [%s]", space)
         if self.is_valid_space(space):
-            state_split = self.state[:(self.state.find(' '))].split("/")
-            state_split = state_split[8 - int(space[1:])]
-            piece = self._get_piece_at_index_in_row(state_split, ord(space[:1]) - 96)
+            # state_split = self.state[:(self.state.find(' '))].split("/")[8 - int(space[1:])]
+            # state_split = state_split[8 - int(space[1:])]
+            piece = self._get_piece_at_index_in_row(self.state[:(self.state.find(' '))].split("/")[8 - int(space[1:])],
+                                                    ord(space[:1]) - 96)
             logger.debug("Piece at space [%s] is %s", space, piece)
             return piece
         else:
@@ -392,6 +442,7 @@ class Game(object):
             return -1
 
     # Get the piece at the given index in the given row
+    @count_calls
     def _get_piece_at_index_in_row(self, row, index):
         counter = 1
         for piece in row:  # For each of the pieces in this piece's row
@@ -405,49 +456,15 @@ class Game(object):
         return -1
 
     # String representation override
+    @count_calls
     def __str__(self):
         return str(self.state)
 
-# Won't get run if we import this as a reusable module
-if __name__ == '__main__':
-    # TODO - Turn these all into legit tests and put them in their own file
+    # def get_count_calls():
+    # Game.get_all_possible_moves.called
 
-    g = Game()
-    # g.get_possible_moves("a2")  # White Pawn 1
-    # g.get_possible_moves("b2")  # White Pawn 2
-    # print
-    # g.get_possible_moves("a7")  # Black Pawn 1
-    # g.get_possible_moves("b7")  # Black Pawn 2
-    # print
-    # g.get_possible_moves("e5")  # Nothing - Middle of board
-    # print
-    # g.get_possible_moves("e1")  # White King
-    # print
-    # g.get_possible_moves("e8")  # Black King
-    # print
-    # g.get_possible_moves("a1")  # White Rook 1
-    # logger.info("-----------------------")
-    # g.get_possible_moves("h1")  # White Rook 2
-
-    # g.get_possible_moves('a1')
-
-    g.get_all_possible_moves()
-
-    # g.get_all_movable_pieces()
-
-    # g.get_piece_at('a1')
-    # g.get_piece_at('a2')
-    # g.get_piece_at('b2')
-    # g.get_piece_at('c2')
-    # g.get_piece_at('d2')
-    # g.get_piece_at('e2')
-    # g.get_piece_at('f2')
-    # g.get_piece_at('g2')
-    # g.get_piece_at('h2')
-    # g.get_piece_at('h1')
-
-    # g.get_possible_moves("a1")  # White Rook
-    # g.get_possible_moves("h1")  # White Rook
-    # print
-    # g.get_possible_moves("a8")  # Black Rook
-    # g.get_possible_moves("h8")  # Black Rook
+#
+#
+# # Won't get run if we import this as a reusable module
+# if __name__ == '__main__':
+#
