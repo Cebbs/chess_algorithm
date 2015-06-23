@@ -1,6 +1,6 @@
 __author__ = 'Conor'
 
-import main
+import chess_board
 import logging
 import operator
 import algorithm
@@ -8,10 +8,10 @@ import algorithm
 logging.basicConfig(level=logging.CRITICAL)
 logger = logging.getLogger(__name__)
 
-num_test_runs = 10000
-g = main.Game()
+num_test_runs = 1000000
+g = chess_board.Game()
 
-a = algorithm.Algorithm()
+a = algorithm.Algorithm('b')
 
 
 def time_test(function_name, *args):
@@ -44,16 +44,20 @@ def run_main_time_tests():
 
     test_results = {}
 
-    test_results['get_all_possible_moves'] = run_time_test_on_function('get_all_possible_moves')
-    test_results['get_possible_moves_for_space'] = run_time_test_on_function('get_possible_moves_for_space', test_space)
-    test_results['is_valid_space'] = run_time_test_on_function('is_valid_space', test_space)
-    test_results['_get_possible_moves_horizontal'] = run_time_test_on_function('_get_possible_moves_horizontal',
-                                                                               test_space)
-    test_results['_get_possible_moves_vertical'] = run_time_test_on_function('_get_possible_moves_vertical', test_space)
-    test_results['_get_possible_moves_diagonal'] = run_time_test_on_function('_get_possible_moves_diagonal', test_space)
-    test_results['is_occupied_by_teammate'] = run_time_test_on_function('is_occupied_by_teammate', test_space)
-    test_results['change_player'] = run_time_test_on_function('change_player')
-    test_results['__str__'] = run_time_test_on_function('__str__')
+    # test_results['get_all_possible_moves'] = run_time_test_on_function('get_all_possible_moves')
+    test_results['get_piece_at'] = run_time_test_on_function('get_piece_at', test_space)
+    # test_results['get_possible_moves_for_space'] = run_time_test_on_function('get_possible_moves_for_space',
+    # test_space)
+    # test_results['is_valid_space'] = run_time_test_on_function('is_valid_space', test_space)
+    # test_results['_get_possible_moves_horizontal'] = run_time_test_on_function('_get_possible_moves_horizontal',
+    #                                                                            test_space)
+    # test_results['_get_possible_moves_vertical'] = run_time_test_on_function('_get_possible_moves_vertical',
+    # test_space)
+    # test_results['_get_possible_moves_diagonal'] = run_time_test_on_function('_get_possible_moves_diagonal',
+    #  test_space)
+    # test_results['is_occupied_by_teammate'] = run_time_test_on_function('is_occupied_by_teammate', test_space)
+    # test_results['change_player'] = run_time_test_on_function('change_player')
+    # test_results['__str__'] = run_time_test_on_function('__str__')
 
     # make a list of tuples sorted by total run time for each function
     readable_test_results = sorted(test_results.items(), key=operator.itemgetter(1), reverse=True)
@@ -99,7 +103,7 @@ def run_decision_tree_generation_time_test(levels_to_search):
             logger.critical("   ::  Average of [%s] nodes generated per second", round(result[1] / result[2], 2))
         logger.critical("   ")
 
-    get_number_of_calls_for_functions(main.Game())
+        # get_number_of_calls_for_functions(main.Game())
 
 
 def get_number_of_calls_for_functions(class_instance):
@@ -129,10 +133,10 @@ def get_number_of_calls_for_functions(class_instance):
 
 if __name__ == '__main__':
     # Tests for main
-    # run_main_time_tests()
+    run_main_time_tests()
 
     # Tests for Decision Tree Generation
-    run_decision_tree_generation_time_test(3)
+    run_decision_tree_generation_time_test(4)
 
     # TODO - Put tests for alpha beta pruning
     ##############
