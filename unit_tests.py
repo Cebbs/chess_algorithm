@@ -98,9 +98,9 @@ class TestGameFunctions(unittest.TestCase):
         # TODO Uncomment when diagonal is finished
         # Queen at D4
         # test_game = chess_board.Game("rnbqkbnr/pppppppp/8/8/3Q4/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1")
-        # self.assertItemsEqual(test_game.get_possible_moves_for_space('d4'), ['a4', 'b4', 'c4', 'e4', 'f4', 'g4', 'h4',
-        #                                                                      'd3', 'd5', 'd6', 'd7', 'c3', 'c5', 'b6',
-        #                                                                      'a7', 'd3', 'd5', 'e6', 'f7'])
+        self.assertItemsEqual(test_game.get_possible_moves_for_space('d4'), ['a4', 'b4', 'c4', 'e4', 'f4', 'g4', 'h4',
+                                                                             'd3', 'd5', 'd6', 'd7', 'c3', 'c5', 'b6',
+                                                                             'a7', 'e6', 'f7'])
 
     def test_get_all_movable_pieces(self):
         g = chess_board.Game()

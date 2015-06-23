@@ -371,7 +371,91 @@ class Game(object):
 
     # Get all possible diagonal moves from the given space
     def _get_possible_moves_diagonal(self, space):
-        return []
+        # Work with trying to find the diagonals from a specific
+
+        # logger.debug("Getting possible vertical moves or pieces to take from space [%s]", space)
+
+        state_split_vertical = self.state.split(" ")[0].split("/")  # Splits the board into Rows
+
+        # List of open space in each diagonal direction from the given
+        up_and_left = []
+        up_and_right = []
+        down_and_left = []
+        down_and_right = []
+
+        current_team = self.get_piece_at(space)
+        if current_team.islower():
+            current_is_black = True
+        else:
+            current_is_black = False
+        # TODO Make sure the current space is on a team, although should be checked
+
+        # General Idea/Concept: Create 4 forloops, each in a direction of using:
+        #       chr(ord(space[:1]) + 1) + str(int(space[1:]) + 1)
+        # to go in a direction, with the the index increasing but the signs staying the same
+        # each time the index is increased, check the space to see if it's occupied. If so and if
+        # said piece is of different color, add to result. Same color, don't add because you can't
+        # technically take the space. Once all are down, concat the 4 arrays of results into the final
+        # result.
+
+        # While loop for the Upper Right diagonal search
+        count_up_right = int(space[1:])
+        while count_up_right <= 8:
+            next_space_up_right = chr(ord(space[:1]) + 1) + str(int(space[1:]) + 1)
+            occ_piece = self.get_piece_at(next_space_up_right)
+            if isinstance(occ_piece, int):
+                up_and_right.append(next_space_up_right)
+                count_up_right += 1
+            elif not ((occ_piece.islower() and current_is_black) or (occ_piece.isupper() and not current_is_black)):
+                up_and_right.append(next_space_up_right)
+                count_up_right += 1
+                break
+
+        # While loop for Upper Left diagonal search
+        count_up_left = int(space[1:])
+        while count_up_left <= 8:
+            next_space_up_left = chr(ord(space[:1]) - 1) + str(int(space[1:]) + 1)
+            occ_piece = self.get_piece_at(next_space_up_left)
+            if isinstance(occ_piece, int):
+                up_and_left.append(next_space_up_left)
+                count_up_left += 1
+            elif not ((occ_piece.islower() and current_is_black) or (occ_piece.isupper() and not current_is_black)):
+                up_and_right.append(next_space_up_left)
+                count_up_left += 1
+                break
+
+        # While loop for Bottom Right diagonal search
+        count_down_right = int(space[1:])
+        while count_down_right >= 1:
+            next_space_down_right = chr(ord(space[:1]) + 1) + str(int(space[1:]) - 1)
+            occ_piece = self.get_piece_at(next_space_down_right)
+            if isinstance(occ_piece, int):
+                down_and_right.append(next_space_down_right)
+                count_down_right -= 1
+            elif not ((occ_piece.islower() and current_is_black) or (occ_piece.isupper() and not current_is_black)):
+                down_and_right.append(next_space_down_right)
+                count_down_right -= 1
+                break
+
+        # While loop for Bottom Right diagonal search
+        count_down_left = int(space[1:])
+        while count_down_left > -1:
+            next_space_down_left = chr(ord(space[:1]) - 1) + str(int(space[1:]) - 1)
+            occ_piece = self.get_piece_at(next_space_down_left)
+            if isinstance(occ_piece, int):
+                down_and_left.append(next_space_down_left)
+                count_down_left -= 1
+            elif not ((occ_piece.islower() and current_is_black) or (occ_piece.isupper() and not current_is_black)):
+                down_and_left.append(next_space_down_left)
+                count_down_left -= 1
+                break
+
+        # TODO Could abstract into another function rather 4 while loops, would make it cleaner, no more optimized
+
+        possible_moves = up_and_right + up_and_left + down_and_left + down_and_right
+        possible_moves.sort()
+
+        return possible_moves
 
     # Get the piece at the given space
     # If there is no piece at the given space, returns -1   # TODO - Should this return None instead?
